@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>netstandard2.0</TargetFramework>
+		<PackageId>IsoTp.CANBus.Net</PackageId>
+		<Version>1.0.0</Version>
+		<Authors>HoanNguyen</Authors>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		
+		<Description>A professional .NET implementation of the ISO 15765-2 (ISO-TP) protocol. It handles message segmentation, multi-frame reassembly, and flow control, providing a robust transport layer for UDS (ISO 14229) and other automotive standards over CAN Bus.</Description>
+		<PackageTags>CAN;CANBus;ISOTP;ISO15765-2;Transport-Layer;Automotive;Protocol-Stack</PackageTags>
+		
+		<PackageProjectUrl>https://github.com/hoannc95/IsoTp.CANBus.Net</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/hoannc95/IsoTp.CANBus.Net</RepositoryUrl>
+		
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<PublishRepositoryUrl>true</PublishRepositoryUrl>
+		<IncludeSymbols>true</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+	</PropertyGroup>
+
+</Project>
