@@ -12,8 +12,6 @@ namespace IsoTp.CANBus.Net
         private const byte FIRST_FRAME          = 0x10;
         private const byte CONSECUTIVE_FRAME    = 0x20;
         private const byte FLOW_CONTROL         = 0x30;
-        private const byte FRAME_SIZE           = 8;
-        private const byte SEPARATION_TIME_MIN  = 10;       /* 10ms */
         /************************************************************************
 	    @ Constant Define																												
         ************************************************************************/
@@ -205,8 +203,8 @@ namespace IsoTp.CANBus.Net
             ushort LEN = 3;
             byte[] DATA = new byte[LEN];
             DATA[0] = FLOW_CONTROL;
-            DATA[1] = FRAME_SIZE;
-            DATA[2] = SEPARATION_TIME_MIN;
+            DATA[1] = _params.BLOCK_SIZE;
+            DATA[2] = _params.SEPARATION_TIME_MIN;
             CANcontrolSend(LEN, DATA, _params.PhysicalId);
         }
         /************************************************************************
@@ -244,8 +242,8 @@ namespace IsoTp.CANBus.Net
                         ushort LEN = 3;
                         byte[] DATA = new byte[LEN];
                         DATA[0] = FLOW_CONTROL;
-                        DATA[1] = FRAME_SIZE;
-                        DATA[2] = SEPARATION_TIME_MIN;
+                        DATA[1] = _params.BLOCK_SIZE;
+                        DATA[2] = _params.SEPARATION_TIME_MIN;
                         CANcontrolSend(LEN, DATA, _params.PhysicalId);
                     }
                 }
