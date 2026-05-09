@@ -1,5 +1,4 @@
 # IsoTp.CANBus.Net
-
 A professional .NET implementation of the **ISO 15765-2 (ISO-TP)** protocol. This library provides a robust transport layer for automotive diagnostic standards like UDS (ISO 14229) over CAN Bus.
 
 ## Features
@@ -7,17 +6,14 @@ A professional .NET implementation of the **ISO 15765-2 (ISO-TP)** protocol. Thi
 * **Flow Control:** Manages transmission pace using **SEPARATION_TIME_MIN** and **BLOCK_SIZE**.
 * **Reassembly:** Reconstructs multiple incoming CAN frames back into a single diagnostic message.
 * **Flexible Driver:** Easily integrates with any CAN hardware (Vector, PEAK-System, USB-CAN, etc.) via a simple callback mechanism.
-
 ---
 
 ## Installation
-
 ```bash
 dotnet add package IsoTp.CANBus.Net
 ```
 
 ## Quick Start
-
 ### 1. Initialize CAN Driver
 The `ICanDriver` acts as a bridge between this library and your hardware.
 
@@ -32,16 +28,31 @@ canDriver.SendCanMessage = (id, data, length) => {
     // YourHardware.Write(id, data);
 };
 ```
+To receive messages, you must invoke the hardware bridge.
 
+```csharp
+// Inside your hardware receive loop
+public void OnCanFrameArrived(uint id, byte[] data)
+{
+    // Important: This triggers the ISO-TP reassembly logic
+    canDriver.InvokeReceive(id, data);
+}
+```
 ### 2. Configure ISO-TP Parameters
 Define the addressing scheme. Flow control settings (STmin, BS) have sensible defaults.
 
 ```csharp
-// Physical Request: 0x7E0, Response: 0x7E8, Functional: 0x7DF
-var tpParams = new IsoTpParams(0x7E0, 0x7E8, 0x7DF);
+// Example for a different ECU (e.g., Transmission Control Module)
+// These IDs are just examples; use the ones specific to your project.
+uint myRequestID  = 0x712; // Example: Physical Request ID
+uint myResponseID = 0x71A; // Example: Physical Response ID
+uint myFunctionID = 0x7DF; // Example: Functional Broadcast ID (Optional)
+
+// Initialize with your custom IDs
+var tpParams = new IsoTpParams(myRequestID, myResponseID, myFunctionID);
 
 // Optional: Override defaults if needed
-// tpParams.SEPARATION_TIME_MIN = 10; // 10ms
+// tpParams.SEPARATION_TIME_MIN = 10; // 10 ms
 // tpParams.BLOCK_SIZE = 8;           // 8 frames per block
 ```
 
@@ -70,7 +81,6 @@ processor.SendData(requestData);
 ---
 
 ## Key Parameters Explained
-
 | Parameter | ISO-TP Term | Unit | Description |
 | :--- | :--- | :--- | :--- |
 | **`SEPARATION_TIME_MIN`** | STmin | Milliseconds | The minimum time wait between two Consecutive Frames (CF). Helps prevent overloading the receiver. |
