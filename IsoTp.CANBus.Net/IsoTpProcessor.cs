@@ -1,5 +1,7 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace IsoTp.CANBus.Net
 {
@@ -8,10 +10,10 @@ namespace IsoTp.CANBus.Net
         /************************************************************************
 	    @ ISO 156765-2																												
         ************************************************************************/
-        private const byte SINGLE_FRAME         = 0x00;
-        private const byte FIRST_FRAME          = 0x10;
-        private const byte CONSECUTIVE_FRAME    = 0x20;
-        private const byte FLOW_CONTROL         = 0x30;
+        private const byte SINGLE_FRAME = 0x00;
+        private const byte FIRST_FRAME = 0x10;
+        private const byte CONSECUTIVE_FRAME = 0x20;
+        private const byte FLOW_CONTROL = 0x30;
         /************************************************************************
 	    @ Constant Define																												
         ************************************************************************/
@@ -108,7 +110,6 @@ namespace IsoTp.CANBus.Net
             if (id != _params.ResponseId) return;
             if (data.Length == 0) return;
             int frameType = (data[0] & 0xF0);
-
             switch (frameType)
             {
                 case SINGLE_FRAME: // Single Frame
@@ -127,7 +128,7 @@ namespace IsoTp.CANBus.Net
         }
         private void CANcontrolSend(ushort DLC, byte[] Data, uint ID)
         {
-            if (DLC == 0)   return;
+            if (DLC == 0) return;
 
             byte SID = Data[0];
             uint CanMsgID = ID;
@@ -249,17 +250,49 @@ namespace IsoTp.CANBus.Net
                 }
             }
         }
+
         /************************************************************************
 	    @ HandleFlowControl
         ************************************************************************/
         private void HandleFlowControl(byte[] MsgData)
         {
             CANFcBs = MsgData[1];
+            byte stMin = MsgData[2];
+
+            int delayMs = ParseStMin(stMin);
 
             _consecutiveFrameTimer?.Dispose();
-            _consecutiveFrameTimer = null;
+            _consecutiveFrameTimer = new System.Threading.Timer(_ => { }, null, Timeout.Infinite, Timeout.Infinite);
 
-            _consecutiveFrameTimer = new System.Threading.Timer(ConsecutiveFrameTimerProc, null, 0, 1);
+            Task.Run(() =>
+            {
+                var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+                try
+                {
+                    while (_consecutiveFrameTimer != null)
+                    {
+                        stopwatch.Restart();
+
+                        ConsecutiveFrameTimerProc(null);
+
+                        if (_consecutiveFrameTimer == null) break;
+
+                        if (delayMs > 0)
+                        {
+                            while (stopwatch.ElapsedMilliseconds < delayMs)
+                            {
+                                if (_consecutiveFrameTimer == null) break;
+                                Thread.SpinWait(10);
+                            }
+                        }
+                        else
+                        {
+                            Thread.SpinWait(50);
+                        }
+                    }
+                }
+                catch { }
+            });
         }
         /************************************************************************
 	    @ ConsecutiveFrameTimerProc
@@ -280,19 +313,19 @@ namespace IsoTp.CANBus.Net
 
             if (CANTransferDataLen > 7)
             {
-                Array.Copy(CANTx.Data.ToArray(), CANTransferDataIdx, TpData, 1, 7);
+                CANTx.Data.CopyTo(CANTransferDataIdx, TpData, 1, 7);
                 CANTransferDataIdx += 7;
                 CANcontrolSend(8, TpData, _params.PhysicalId);
             }
             else
             {
-                Array.Copy(CANTx.Data.ToArray(), CANTransferDataIdx, TpData, 1, CANTransferDataLen);
+                CANTx.Data.CopyTo(CANTransferDataIdx, TpData, 1, CANTransferDataLen);
                 _consecutiveFrameTimer?.Dispose();
                 _consecutiveFrameTimer = null;
                 CANcontrolSend((ushort)(CANTransferDataLen + 1), TpData, _params.PhysicalId);
             }
 
-            if ((CANSeqNum % CANFcBs) == 0)
+            if (CANFcBs != 0 && (CANSeqNum % CANFcBs) == 0)
             {
                 if (_consecutiveFrameTimer != null)
                 {
@@ -300,6 +333,21 @@ namespace IsoTp.CANBus.Net
                     _consecutiveFrameTimer = null;
                 }
             }
+        }
+        /************************************************************************
+        @ ParseStMin
+        ************************************************************************/
+        private int ParseStMin(byte stMin)
+        {
+            if (stMin <= 0x7F)
+            {
+                return stMin; // 0ms to 127ms
+            }
+            else if (stMin >= 0xF1 && stMin <= 0xF9)
+            {
+                return 1; // Convert to 1ms
+            }
+            return 0;
         }
     }
 }
