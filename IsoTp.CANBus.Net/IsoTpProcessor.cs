@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -10,10 +11,10 @@ namespace IsoTp.CANBus.Net
         /************************************************************************
 	    @ ISO 156765-2																												
         ************************************************************************/
-        private const byte SINGLE_FRAME = 0x00;
-        private const byte FIRST_FRAME = 0x10;
-        private const byte CONSECUTIVE_FRAME = 0x20;
-        private const byte FLOW_CONTROL = 0x30;
+        private const byte SINGLE_FRAME         = 0x00;
+        private const byte FIRST_FRAME          = 0x10;
+        private const byte CONSECUTIVE_FRAME    = 0x20;
+        private const byte FLOW_CONTROL         = 0x30;
         /************************************************************************
 	    @ Constant Define																												
         ************************************************************************/
@@ -287,7 +288,7 @@ namespace IsoTp.CANBus.Net
                         }
                         else
                         {
-                            Thread.SpinWait(50);
+                            WaitMicroseconds(150);
                         }
                     }
                 }
@@ -348,6 +349,27 @@ namespace IsoTp.CANBus.Net
                 return 1; // Convert to 1ms
             }
             return 0;
+        }
+        /************************************************************************
+        @ WaitMicroseconds
+        ************************************************************************/
+        private static void WaitMicroseconds(long microseconds)
+        {
+            if (microseconds <= 0)
+                return;
+
+            double ticksPerMicrosecond =
+                Stopwatch.Frequency / 1_000_000.0;
+
+            long targetTicks =
+                (long)(microseconds * ticksPerMicrosecond);
+
+            long startTicks = Stopwatch.GetTimestamp();
+
+            while (Stopwatch.GetTimestamp() - startTicks < targetTicks)
+            {
+                Thread.SpinWait(10);
+            }
         }
     }
 }
