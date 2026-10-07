@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
@@ -133,7 +133,7 @@ namespace IsoTp.CANBus.Net
 
             byte SID = Data[0];
             uint CanMsgID = ID;
-            byte[] CanMsgData = new byte[8];
+            byte[] CanMsgData = new byte[8] { 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55 };
 
             switch (TxSts)
             {
@@ -288,7 +288,7 @@ namespace IsoTp.CANBus.Net
                         }
                         else
                         {
-                            WaitMicroseconds(150);
+                            WaitMicroseconds(200);
                         }
                     }
                 }
