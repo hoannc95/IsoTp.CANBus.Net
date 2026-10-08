@@ -51,7 +51,8 @@ namespace IsoTp.CANBus.Net
         private STCAN CANRx = new STCAN();
 
         private ushort CANTransferDataLen = 0;
-        private byte CANSeqNum = 0, CANTransferDataIdx = 0, CANFcBs = 8;
+        private byte CANSeqNum = 0, CANTransferDataIdx = 0, CANFcBs = 0;
+        private int recvBlockFrameCounter = 0, sendBlockFrameCounter = 0;
         private TX_STATE TxSts = TX_STATE.Normal;
         private System.Threading.Timer _consecutiveFrameTimer;
         /************************************************************************
@@ -152,6 +153,7 @@ namespace IsoTp.CANBus.Net
                     }
                     else
                     {
+                        sendBlockFrameCounter = 0;
                         CANTransferDataLen = DLC;
                         CanMsgData[0] = (byte)(FIRST_FRAME | (DLC >> 8));
                         CanMsgData[1] = (byte)(DLC & 0xFF);
@@ -193,6 +195,8 @@ namespace IsoTp.CANBus.Net
         ************************************************************************/
         private void HandleFirstFrame(byte[] MsgData)
         {
+            recvBlockFrameCounter = 0;
+
             CANRx = new STCAN();
             CANRx.Len = (ushort)(((MsgData[0] & 0x0F) << 8) | MsgData[1]);
             CANRx.Data.AddRange(new ArraySegment<byte>(MsgData, 2, 6));
@@ -219,6 +223,8 @@ namespace IsoTp.CANBus.Net
 
             if ((MsgData[0] & 0x0F) == CANSeqNum)
             {
+                recvBlockFrameCounter++;
+
                 if (CANTransferDataLen >= 7)
                 {
                     CANRx.Data.AddRange(new ArraySegment<byte>(MsgData, 1, 7));
@@ -238,8 +244,9 @@ namespace IsoTp.CANBus.Net
                 }
                 else
                 {
-                    if ((CANSeqNum % CANFcBs) == 0)
+                    if (_params.BLOCK_SIZE != 0 && (recvBlockFrameCounter % _params.BLOCK_SIZE) == 0)
                     {
+                        recvBlockFrameCounter = 0;
                         TxSts = TX_STATE.FlowControl;
                         ushort LEN = 3;
                         byte[] DATA = new byte[LEN];
@@ -301,7 +308,6 @@ namespace IsoTp.CANBus.Net
         private void ConsecutiveFrameTimerProc(object state)
         {
             byte[] TpData = new byte[8];
-
             // Update TX CF status
             TxSts = TX_STATE.ConsecutiveFrame;
 
@@ -309,8 +315,10 @@ namespace IsoTp.CANBus.Net
             CANSeqNum++;
             if (CANSeqNum > 0xF)
                 CANSeqNum = 0;
-
             TpData[0] = (byte)(CONSECUTIVE_FRAME | CANSeqNum);
+
+            // Increase Block Frame Counter
+            sendBlockFrameCounter++;
 
             if (CANTransferDataLen > 7)
             {
@@ -326,7 +334,7 @@ namespace IsoTp.CANBus.Net
                 CANcontrolSend((ushort)(CANTransferDataLen + 1), TpData, _params.PhysicalId);
             }
 
-            if (CANFcBs != 0 && (CANSeqNum % CANFcBs) == 0)
+            if (CANFcBs != 0 && (sendBlockFrameCounter % CANFcBs) == 0)
             {
                 if (_consecutiveFrameTimer != null)
                 {
